@@ -15,6 +15,9 @@ class ZMQServer(object):
     DISCOVERY_MESSAGE: bytes= b"DISCOVER_PC"
     DISCOVERY_REPLY: bytes  = b"PC_HERE"
     BUFFER_SIZE: int        = 1024
+    ZMQ_IMAGE_PUB_PORT: int = 5006
+    ZMQ_GAZE_SUB_PORT: int  = 5007
+    PC_WIFI_IP: str = "192.168.0.208"
 
     def __init__(self) -> None:
         # We'll store the HoloLens's IP once discovered:
@@ -31,16 +34,17 @@ class ZMQServer(object):
 
         sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("", self.DISCOVERY_PORT))
-        print(f"[PC][UDP] Listening for discovery on UDP port {self.DISCOVERY_PORT}...")
+        sock.bind((self.PC_WIFI_IP, self.DISCOVERY_PORT))
+        print(f"[PC][UDP] Listening for discovery on {self.PC_WIFI_IP}:{self.DISCOVERY_PORT}...")
 
         while True:
             data: bytes
             addr: Tuple[str, int]
             data, addr = sock.recvfrom(self.BUFFER_SIZE)
+            print(f"[PC][UDP] Received data: {data} from {addr}")
             if data == self.DISCOVERY_MESSAGE:
-                hololens_address = addr[0]
-                print(f"[PC][UDP] Received discovery ping from HoloLens @ {hololens_address}.")
+                self.hololens_address = addr[0]
+                print(f"[PC][UDP] Received discovery ping from HoloLens @ {self.hololens_address}.")
                 # Reply back so HoloLens knows our IP
                 sock.sendto(self.DISCOVERY_REPLY, addr)
                 break  # we only need one discovery
@@ -66,8 +70,6 @@ class ZMQServer(object):
     # ------------------------------------------------------------
     # 2) ZeroMQ Setup: PUB for images, SUB for gaze
     # ------------------------------------------------------------
-    ZMQ_IMAGE_PUB_PORT: int = 5556
-    ZMQ_GAZE_SUB_PORT: int  = 5557
 
     def zmq_image_publisher(self, step: int, cap: cv2.VideoCapture) -> None:
         """
@@ -108,6 +110,7 @@ class ZMQServer(object):
             # send 'step' as a single-byte header, then image bytes
             header: bytes = step.to_bytes(1, byteorder="big")
             self.image_pub.send_multipart([header, jpg_bytes])
+            print(f"[PC][ZMQ] Published image with step={step} | size={len(jpg_bytes)} bytes")
 
         except Exception as e:
             print(f"[PC][ERROR] Exception in image publisher: {e}")
