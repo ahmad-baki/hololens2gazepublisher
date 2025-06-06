@@ -13,6 +13,7 @@ DISCOVERY_PORT: int     = 5005
 DISCOVERY_MESSAGE: bytes= b"DISCOVER_PC"
 DISCOVERY_REPLY: bytes  = b"PC_HERE"
 BUFFER_SIZE: int        = 1024
+PC_WIFI_IP: str =  "192.168.0.208"
 
 # We'll store the HoloLens's IP once discovered:
 hololens_address: Optional[str] = None
@@ -26,6 +27,7 @@ def udp_discovery_listener() -> None:
 
     sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # sock.bind((PC_WIFI_IP, DISCOVERY_PORT))
     sock.bind(("", DISCOVERY_PORT))
     print(f"[PC][UDP] Listening for discovery on UDP port {DISCOVERY_PORT}...")
 
@@ -54,8 +56,8 @@ def zmq_image_publisher() -> None:
     """
     context = zmq.Context()
     image_pub = context.socket(zmq.PUB)
-    image_pub.bind(f"tcp://*:{ZMQ_IMAGE_PUB_PORT}")
-    print(f"[PC][ZMQ] Image PUB bound on tcp://*:{ZMQ_IMAGE_PUB_PORT}")
+    image_pub.bind(f"tcp://{PC_WIFI_IP}:{ZMQ_IMAGE_PUB_PORT}")
+    print(f"[PC][ZMQ] Image PUB bound on tcp://{PC_WIFI_IP}:{ZMQ_IMAGE_PUB_PORT}")
 
     # cap: cv2.VideoCapture = cv2.VideoCapture(0)  # open default camera
     #if not cap.isOpened():
@@ -117,8 +119,8 @@ def zmq_gaze_subscriber() -> None:
     gaze_sub = context.socket(zmq.SUB)
     # subscribe to everything:
     gaze_sub.setsockopt_string(zmq.SUBSCRIBE, "")
-    gaze_sub.bind(f"tcp://*:{ZMQ_GAZE_SUB_PORT}")
-    print(f"[PC][ZMQ] Gaze SUB bound on tcp://*:{ZMQ_GAZE_SUB_PORT}")
+    gaze_sub.bind(f"tcp://{PC_WIFI_IP}:{ZMQ_GAZE_SUB_PORT}")
+    print(f"[PC][ZMQ] Gaze SUB bound on tcp://{PC_WIFI_IP}:{ZMQ_GAZE_SUB_PORT}")
 
     try:
         while True:
