@@ -1,3 +1,4 @@
+import re
 import socket
 import threading
 import time
@@ -60,9 +61,7 @@ class ZMQServer(object):
     def init_sub_socket(self) -> None:
         # init sub for gaze data
         self.sub_context = zmq.Context()
-        self.gaze_sub = self.sub_context.socket(zmq.SUB)
-        # subscribe to everything:
-        self.gaze_sub.setsockopt_string(zmq.SUBSCRIBE, "")
+        self.gaze_sub = self.sub_context.socket(zmq.PULL)
         self.gaze_sub.bind(f"tcp://*:{self.ZMQ_GAZE_SUB_PORT}")
         print(f"[PC][ZMQ] Gaze SUB bound on tcp://*:{self.ZMQ_GAZE_SUB_PORT}")
 
@@ -76,14 +75,6 @@ class ZMQServer(object):
         Captures frames from the default camera (index=0), encodes as JPEG,
         and publishes them over ZMQ PUB socket at tcp://*:5556.
         """
-
-        # cap: cv2.VideoCapture = cv2.VideoCapture(0)  # open default camera
-        #if not cap.isOpened():
-        #    print("[PC][ERROR] Could not open camera. Exiting image publisher.")
-        #    return
-
-        # get image from "./test_image.jpg" for testing:
-
         try:
             ret: bool
             frame: Any
@@ -107,8 +98,7 @@ class ZMQServer(object):
 
             jpg_bytes: bytes = encoded.tobytes()
             # Publish as a single ZMQ message
-            # send 'step' as a single-byte header, then image bytes
-            step_bytes: bytes = step.to_bytes(1, byteorder="big")
+            step_bytes: bytes = step.to_bytes(4, byteorder="big")
             self.image_pub.send_multipart([step_bytes, jpg_bytes])
             print(f"[PC][ZMQ] Published image with step={step} | size={len(jpg_bytes)} bytes")
 
@@ -123,11 +113,11 @@ class ZMQServer(object):
         """
         msg: str = self.gaze_sub.recv_string()
         try:
-            gaze: Dict[str, Any] = json.loads(msg)
+            fixed = re.sub(r'(\d),(\d)', r'\1.\2', msg)
+            gaze: Dict[str, Any] = json.loads(fixed)
             x: Any = gaze.get("x")
             y: Any = gaze.get("y")
             step: Any = gaze.get("step")
-            print(f"[PC][ZMQ] Received gaze: x={x}, y={y}, s={step}")
             return (float(x), float(y), int(step))
         except Exception as e:
             print(f"[PC][ERROR] Could not parse gaze JSON: {e} | raw: {msg}")
