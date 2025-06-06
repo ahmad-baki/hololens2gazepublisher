@@ -108,8 +108,8 @@ class ZMQServer(object):
             jpg_bytes: bytes = encoded.tobytes()
             # Publish as a single ZMQ message
             # send 'step' as a single-byte header, then image bytes
-            header: bytes = step.to_bytes(1, byteorder="big")
-            self.image_pub.send_multipart([header, jpg_bytes])
+            step_bytes: bytes = step.to_bytes(1, byteorder="big")
+            self.image_pub.send_multipart([step_bytes, jpg_bytes])
             print(f"[PC][ZMQ] Published image with step={step} | size={len(jpg_bytes)} bytes")
 
         except Exception as e:
@@ -121,7 +121,7 @@ class ZMQServer(object):
         Subscribes to gaze‐coordinate messages (as JSON strings) on tcp://*:5557.
         Each message could look like: { "x": 123, "y": 456, "step": 1234 }
         """
-        msg: str = self.gaze_sub.recv_string()  # HoloLens will send a UTF-8 JSON
+        msg: str = self.gaze_sub.recv_string()
         try:
             gaze: Dict[str, Any] = json.loads(msg)
             x: Any = gaze.get("x")
