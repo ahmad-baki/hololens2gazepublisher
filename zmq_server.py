@@ -6,7 +6,33 @@ import cv2
 import zmq
 import json
 from typing import Optional, Tuple, Any, Dict
+import sys
 
+
+def get_wlan_ip() -> str:
+    if(sys.platform.startswith("win")):
+        # Windows version
+        import subprocess
+        result = subprocess.run('ipconfig', stdout=subprocess.PIPE, text=True).stdout.lower()
+        scan = 0
+        for i in result.split('\n'):
+            if 'wireless' in i:
+                scan = 1
+            if scan:
+                if 'ipv4' in i:
+                    return i.split(':')[1].strip()
+    elif(sys.platform.startswith("linux")):
+        # Linux version
+        # TODO: DIDN'T TEST THIS YET
+        import socket
+        import os
+        gw = os.popen("ip -4 route show default").read().split()
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect((gw[2], 0))
+        return s.getsockname()[0]
+    else:
+        raise Exception("Unsupported platform for WLAN IP detection.")
+    raise Exception("Could not determine WLAN IP address.")
 
 class ZMQServer(object):
     # ------------------------------------------------------------
@@ -18,7 +44,7 @@ class ZMQServer(object):
     BUFFER_SIZE: int        = 1024
     ZMQ_IMAGE_PUB_PORT: int = 5006
     ZMQ_GAZE_SUB_PORT: int  = 5007
-    PC_WIFI_IP: str = "192.168.0.208"
+    PC_WIFI_IP: str = get_wlan_ip()
 
     def __init__(self) -> None:
         # We'll store the HoloLens's IP once discovered:

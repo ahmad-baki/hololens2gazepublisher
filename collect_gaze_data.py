@@ -75,6 +75,7 @@ if __name__ == "__main__":
     server = ZMQServer()
 
     # 1) Run discovery listener in main thread (blocks until HL2 pings)
+
     server.udp_discovery_listener()
     print(f"[PC] Discovery complete. HoloLens is at {server.hololens_address}.")
     print("[PC][ZMQ] Starting threads...")
