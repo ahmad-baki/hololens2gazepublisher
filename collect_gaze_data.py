@@ -7,7 +7,7 @@ import cv2
 import zmq
 # from GazeTrackerDevice import GazeTracker
 # import GazeTrackerDevice
-from zmq_server import ZMQServer
+from hololens2gazepublisher.gaze_server import GazeServer
 
 
 PUBLISH_HZ: float = 1.0
@@ -16,7 +16,7 @@ REC_HZ: float = 15.0
 
 
 
-def img_rec_and_pub(server: ZMQServer) -> None:
+def img_rec_and_pub(server: GazeServer) -> None:
     """
     Thread function to handle image capture and publishing.
     """
@@ -53,7 +53,7 @@ def img_rec_and_pub(server: ZMQServer) -> None:
         print("[PC][ZMQ] Interrupted by user.")
 
 
-def gaze_rec(server: ZMQServer) -> None:
+def gaze_rec(server: GazeServer) -> None:
     """
     Thread function to handle gaze data subscription.
     """
@@ -72,11 +72,11 @@ def gaze_rec(server: ZMQServer) -> None:
 
 
 if __name__ == "__main__":
-    server = ZMQServer()
+    server = GazeServer()
 
     # 1) Run discovery listener in main thread (blocks until HL2 pings)
 
-    server.udp_discovery_listener()
+    server._udp_discovery_listener()
     print(f"[PC] Discovery complete. HoloLens is at {server.hololens_address}.")
     print("[PC][ZMQ] Starting threads...")
 
