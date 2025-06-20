@@ -33,6 +33,7 @@ def get_wlan_ip() -> str:
         wlan_interface_name: str = wlan_interfaces[0]  # Use the first WLAN interface found
         wlan_interface = pyw.getcard(wlan_interface_name)
         ip, mask, bcast = pyw.ifaddrget(wlan_interface)
+        print(f"[PC] WLAN-IP address: {ip}")
         return ip
 
     else:

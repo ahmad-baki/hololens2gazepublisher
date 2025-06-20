@@ -7,7 +7,7 @@ import cv2
 import zmq
 # from GazeTrackerDevice import GazeTracker
 # import GazeTrackerDevice
-from hololens2gazepublisher.gaze_server import GazeServer
+from gaze_server import GazeServer
 
 
 PUBLISH_HZ: float = 1.0
@@ -93,13 +93,17 @@ if __name__ == "__main__":
     try:
         while True :
             in_str = input("e to exit, r to restart: ")
-            match in_str:
-                case "e":
-                    print("[PC] Exiting...")
-                    break
-                    
-                case "r":
-                    print("[PC] Restarting image and gaze threads...")
+            # match in_str:
+            #     case "e":
+            #         print("[PC] Exiting...")
+            #         break
+            #     case "r":
+            #         print("[PC] Restarting image and gaze threads...")
+            if in_str == "e":
+                print("[PC] Exiting...")
+                break
+            elif in_str == "r":
+                print("[PC] Restarting image and gaze threads...")
                    
     except Exception as e:
         print("[PC] Shutting down.")

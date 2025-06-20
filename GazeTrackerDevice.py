@@ -1,6 +1,6 @@
 import cv2
-from hololens2gazepublisher.gaze_server import GazeServer
-from hololens2gazepublisher.real_robot.real_robot_env.robot.hardware_cameras import DiscreteCamera
+from gaze_server import GazeServer
+from real_robot.real_robot_env.robot.hardware_cameras import DiscreteCamera
 from real_robot.real_robot_env.robot.hardware_devices import DiscreteDevice
 from pathlib import Path
 from multiprocessing import Pipe
@@ -11,14 +11,13 @@ class GazeTrackerDevice(DiscreteDevice):
         self,
         device_id,
         camera: DiscreteCamera,
-        ### ADD WHATEVER PARAMETERS YOU NEED
         name=None,
         start_frame_latency=0,
         gaze_server=GazeServer()
     ):
         super().__init__(
             device_id,
-            name if name else f"<DEFAULT_SENSOR_NAME>_{device_id}",
+            name if name else f"GazeTrackerDevice_{device_id}",
             start_frame_latency
         )
         self.writer = Pipe(False)
@@ -34,7 +33,7 @@ class GazeTrackerDevice(DiscreteDevice):
 
     def _setup_connect(self):
         self.gaze_server.setup_connection()
-        self.camera._setup_connect()
+        self.camera.connect()
 
 
     
@@ -78,4 +77,4 @@ class GazeTrackerDevice(DiscreteDevice):
             amount, device_type="GazeTrackerDevice", **kwargs
         )
         ### FIND CONNECTED SENSORS OF YOUR TYPE HERE
-    raise NotImplementedError
+        raise NotImplementedError
