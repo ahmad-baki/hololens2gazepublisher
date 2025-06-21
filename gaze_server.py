@@ -10,6 +10,7 @@ import sys
 
 
 def get_wlan_ip() -> str:
+    ip: str = ""
     if(sys.platform.startswith("win")):
         # Windows version
         print("[PC] Detecting WLAN IP address on Windows...")
@@ -21,7 +22,8 @@ def get_wlan_ip() -> str:
                 scan = 1
             if scan:
                 if 'ipv4' in i:
-                    return i.split(':')[1].strip()
+                    ip = i.split(':')[1].strip()
+                    break
     elif(sys.platform.startswith("linux")):
         print("[PC] Detecting WLAN IP address on Linux...")
         import pyric.pyw as pyw
@@ -33,12 +35,12 @@ def get_wlan_ip() -> str:
         wlan_interface_name: str = wlan_interfaces[0]  # Use the first WLAN interface found
         wlan_interface = pyw.getcard(wlan_interface_name)
         ip, mask, bcast = pyw.ifaddrget(wlan_interface)
-        print(f"[PC] WLAN-IP address: {ip}")
-        return ip
-
     else:
         raise Exception("Unsupported platform for WLAN IP detection.")
-    raise Exception("Could not determine WLAN IP address.")
+    if ip == "":
+        raise RuntimeError("Could not detect WLAN IP address. Please ensure you are connected to a Wi-Fi network.")
+    print(f"[PC] WLAN-IP address: {ip}")
+    return ip
 
 class GazeServer(object):
     DISCOVERY_PORT: int     = 5005
@@ -48,6 +50,8 @@ class GazeServer(object):
     ZMQ_IMAGE_PUB_PORT: int = 5006
     ZMQ_GAZE_SUB_PORT: int  = 5007
     PC_WIFI_IP: str = get_wlan_ip()
+    # Set False if working on linux, idk why
+    bind_to_wifi: bool = False  # Set to False if you want to bind to all interfaces, 
 
     def __init__(self) -> None:
         # We'll store the HoloLens's IP once discovered:
@@ -71,8 +75,9 @@ class GazeServer(object):
 
         sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.PC_WIFI_IP, self.DISCOVERY_PORT))
-        print(f"[PC][UDP] Listening for discovery on {self.PC_WIFI_IP}:{self.DISCOVERY_PORT}...")
+        bind_address: Tuple[str, int] = (self.PC_WIFI_IP, self.DISCOVERY_PORT) if self.bind_to_wifi else ('', self.DISCOVERY_PORT)
+        sock.bind(bind_address)
+        print(f"[PC][UDP] Listening for discovery on {bind_address}...")
         # hacky
         # self.hololens_address = "10.68.147.179"
         # sock.sendto(self.DISCOVERY_REPLY, ('10.68.147.179', 55538))
@@ -83,6 +88,7 @@ class GazeServer(object):
             addr: Tuple[str, int]
             data, addr = sock.recvfrom(self.BUFFER_SIZE)
             print(f"[PC][UDP] Received data: {data} from {addr}")
+            print(f"[PC][UDP] Received data: {data} from {addr[0]}:{addr[1]}")
             if data == self.DISCOVERY_MESSAGE:
                 self.hololens_address = addr[0]
                 print(f"[PC][UDP] Received discovery ping from HoloLens @ {addr}.")

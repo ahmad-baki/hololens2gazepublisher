@@ -27,7 +27,7 @@ def img_rec_and_pub(server: GazeServer) -> None:
     # socket.bind(bind_address)
     # print(f"[PC][ZMQ] PUSH bind at {bind_address}")
 
-    img = cv2.imread("./sehtest.jpg")
+    img = cv2.imread("/home/abaki/Desktop/hololens2gazepublisher/sehtest.jpg")
     if img is None:
         print(f"[PC] Error: Image '{'./sehtest.jpg'}' could not be loaded.")
         sys.exit(1)
