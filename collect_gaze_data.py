@@ -104,9 +104,9 @@ if __name__ == "__main__":
                 break
             elif in_str == "r":
                 print("[PC] Restarting image and gaze threads...")
+                
                    
     except Exception as e:
         print("[PC] Shutting down.")
-    server.close_pub()
-    server.close_sub()
+    server.close()
     print("[PC] Closed ZMQ sockets.")

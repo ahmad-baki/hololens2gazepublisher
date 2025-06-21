@@ -74,21 +74,21 @@ class GazeServer(object):
         sock.bind((self.PC_WIFI_IP, self.DISCOVERY_PORT))
         print(f"[PC][UDP] Listening for discovery on {self.PC_WIFI_IP}:{self.DISCOVERY_PORT}...")
         # hacky
-        self.hololens_address = "10.68.147.179"
-        sock.sendto(self.DISCOVERY_REPLY, (self.hololens_address, 5005))
-        print(f"[PC][UDP] Sent discovery reply to HoloLens @ {self.hololens_address}:{5005}.")
+        # self.hololens_address = "10.68.147.179"
+        # sock.sendto(self.DISCOVERY_REPLY, ('10.68.147.179', 55538))
+        # print(f"[PC][UDP] Sent discovery reply to HoloLens @ {self.hololens_address}:{55538}.")
 
-        # while True:
-        #     data: bytes
-        #     addr: Tuple[str, int]
-        #     data, addr = sock.recvfrom(self.BUFFER_SIZE)
-        #     print(f"[PC][UDP] Received data: {data} from {addr}")
-        #     if data == self.DISCOVERY_MESSAGE:
-        #         self.hololens_address = addr[0]
-        #         print(f"[PC][UDP] Received discovery ping from HoloLens @ {self.hololens_address}.")
-        #         # Reply back so HoloLens knows our IP
-        #         sock.sendto(self.DISCOVERY_REPLY, addr)
-        #         break  # we only need one discovery
+        while True:
+            data: bytes
+            addr: Tuple[str, int]
+            data, addr = sock.recvfrom(self.BUFFER_SIZE)
+            print(f"[PC][UDP] Received data: {data} from {addr}")
+            if data == self.DISCOVERY_MESSAGE:
+                self.hololens_address = addr[0]
+                print(f"[PC][UDP] Received discovery ping from HoloLens @ {addr}.")
+                # Reply back so HoloLens knows our IP
+                sock.sendto(self.DISCOVERY_REPLY, addr)
+                break  # we only need one discovery
 
     def zmq_image_publisher(self, step: int, image: cv2.typing.MatLike) -> None:
         """
