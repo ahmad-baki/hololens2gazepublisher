@@ -65,6 +65,7 @@ class GazeTrackerDevice(DiscreteDevice):
 
         self.gaze_server.zmq_image_publisher(self.step, camera_image)
         self.step += 1
+        
         camera_data_new = { 'camera_image': camera_data, 'step': self.step }
         return {
             'gaze_data': self.gaze_server.zmq_gaze_subscriber(),

@@ -21,15 +21,15 @@ def img_rec_and_pub(server: GazeServer) -> None:
     Thread function to handle image capture and publishing.
     """
     step:int = 0  # message index for ZMQ
-    context = zmq.Context()
-    socket = context.socket(zmq.PUSH)
-    bind_address = f"tcp://*:{server.ZMQ_IMAGE_PUB_PORT}"
-    socket.bind(bind_address)
-    print(f"[PC][ZMQ] PUSH bind at {bind_address}")
+    # context = zmq.Context()
+    # socket = context.socket(zmq.PUSH)
+    # bind_address = f"tcp://*:{server.ZMQ_IMAGE_PUB_PORT}"
+    # socket.bind(bind_address)
+    # print(f"[PC][ZMQ] PUSH bind at {bind_address}")
 
-    img = cv2.imread("C:/Users/Ahmad/Desktop/hololens2gazepublisher/sehtest.jpg")
+    img = cv2.imread("./sehtest.jpg")
     if img is None:
-        print(f"[PC] Error: Image '{'C:/Users/Ahmad/Desktop/hololens2gazepublisher/sehtest.jpg'}' could not be loaded.")
+        print(f"[PC] Error: Image '{'./sehtest.jpg'}' could not be loaded.")
         sys.exit(1)
 
     # OpenCV liefert BGR; wir kodieren direkt als JPEG, das funktioniert
@@ -47,7 +47,7 @@ def img_rec_and_pub(server: GazeServer) -> None:
         while True:
             time.sleep(1)
             # Sende das Byte‐Array in einer ZeroMQ‐Nachricht
-            socket.send_multipart([step.to_bytes(4), img_bytes])
+            server.zmq_image_publisher(step, img_encoded)
             step += 1
     except KeyboardInterrupt:
         print("[PC][ZMQ] Interrupted by user.")
@@ -57,7 +57,6 @@ def gaze_rec(server: GazeServer) -> None:
     """
     Thread function to handle gaze data subscription.
     """
-    server.init_sub_socket()
     while True:
         try:
             gaze_data: Tuple[float, float, int] = server.zmq_gaze_subscriber()
@@ -73,6 +72,7 @@ def gaze_rec(server: GazeServer) -> None:
 
 if __name__ == "__main__":
     server = GazeServer()
+    server.setup_connection()
 
     # 1) Run discovery listener in main thread (blocks until HL2 pings)
 
