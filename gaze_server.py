@@ -47,8 +47,8 @@ class GazeServer(object):
     DISCOVERY_MESSAGE: bytes= b"DISCOVER_PC"
     DISCOVERY_REPLY: bytes  = b"PC_HERE"
     BUFFER_SIZE: int        = 1024
-    ZMQ_IMAGE_PUB_PORT: int = 5006
-    ZMQ_GAZE_SUB_PORT: int  = 5007
+    ZMQ_IMG_PORT: int = 5006
+    ZMQ_GAZE_PORT: int  = 5007
     PC_WIFI_IP: str = get_wlan_ip()
     # Set False if working on linux, idk why
     bind_to_wifi: bool = False  # Set to False if you want to bind to all interfaces, 
@@ -63,8 +63,8 @@ class GazeServer(object):
         This will block until a HoloLens sends a DISCOVER_PC message.
         """
         self._udp_discovery_listener()
-        self._init_pub_socket()
-        self._init_sub_socket()
+        self._init_img_socket()
+        self._init_gaze_socket()
 
     def _udp_discovery_listener(self) -> None:
         """
@@ -96,7 +96,7 @@ class GazeServer(object):
                 sock.sendto(self.DISCOVERY_REPLY, addr)
                 break  # we only need one discovery
 
-    def zmq_image_publisher(self, step: int, image: cv2.typing.MatLike) -> None:
+    def zmq_publish_image(self, timestamp: int, image: cv2.typing.MatLike) -> None:
         """
         Captures frames from the default camera (index=0), encodes as JPEG,
         and publishes them over ZMQ PUB socket at tcp://*:5556.
@@ -105,59 +105,53 @@ class GazeServer(object):
             
             image_bytes: bytes = image.tobytes()
             # Publish as a single ZMQ message
-            step_bytes: bytes = step.to_bytes(4, byteorder="big")
+            step_bytes: bytes = timestamp.to_bytes(4, byteorder="big")
             self.image_pub.send_multipart([step_bytes, image_bytes])
-            print(f"[PC][ZMQ] Published image with step={step} | size={len(image_bytes)} bytes")
+            print(f"[PC][ZMQ] Published image with step={timestamp} | size={len(image_bytes)} bytes")
 
         except Exception as e:
             print(f"[PC][ERROR] Exception in image publisher: {e}")
             return
 
-    def zmq_gaze_subscriber(self) -> Tuple[float, float, int]:
+    def zmq_get_gaze(self) -> Dict[str, Any]:
         """
         Subscribes to gaze‐coordinate messages (as JSON strings) on tcp://*:5557.
-        Each message could look like: { "x": 123, "y": 456, "step": 1234 }
+        Each message could look like: { "x": 123, "y": 456, "time": 1234 }
         """
-        msg: str = self.gaze_sub.recv_string()
-        try:
-            fixed = re.sub(r'(\d),(\d)', r'\1.\2', msg)
-            gaze: Dict[str, Any] = json.loads(fixed)
-            x: Any = gaze.get("x")
-            y: Any = gaze.get("y")
-            step: Any = gaze.get("step")
-            return (float(x), float(y), int(step))
-        except Exception as e:
-            print(f"[PC][ERROR] Could not parse gaze JSON: {e} | raw: {msg}")
-            return (0.0, 0.0, -1)
+        self.gaze_req.send_string("")
+        msg: str = self.gaze_req.recv_string()
+        fixed = re.sub(r'(\d),(\d)', r'\1.\2', msg)
+        gaze: Dict[str, Any] = json.loads(fixed)
+        return gaze
 
     def close(self) -> None:
         """
         Closes the ZeroMQ sockets and contexts.
         """
-        self._close_pub()
-        self._close_sub()
+        self._close_gaze()
+        self._close_img()
         print("[PC][ZMQ] Closed all sockets and contexts.")
 
 
-    def _init_pub_socket(self) -> None:
+    def _init_img_socket(self) -> None:
         # init pub for gaze data
         self.pub_context = zmq.Context()
         self.image_pub = self.pub_context.socket(zmq.PUB)
-        self.image_pub.bind(f"tcp://*:{self.ZMQ_IMAGE_PUB_PORT}")
-        print(f"[PC][ZMQ] Image PUB bound on tcp://*:{self.ZMQ_IMAGE_PUB_PORT}")
+        self.image_pub.bind(f"tcp://*:{self.ZMQ_IMG_PORT}")
+        print(f"[PC][ZMQ] Image PUB bound on tcp://*:{self.ZMQ_IMG_PORT}")
 
 
-    def _init_sub_socket(self) -> None:
+    def _init_gaze_socket(self) -> None:
         # init sub for gaze data
         self.sub_context = zmq.Context()
-        self.gaze_sub = self.sub_context.socket(zmq.PULL)
-        self.gaze_sub.bind(f"tcp://*:{self.ZMQ_GAZE_SUB_PORT}")
-        print(f"[PC][ZMQ] Gaze SUB bound on tcp://*:{self.ZMQ_GAZE_SUB_PORT}")
+        self.gaze_req = self.sub_context.socket(zmq.REQ)
+        self.gaze_req.bind(f"tcp://*:{self.ZMQ_GAZE_PORT}")
+        print(f"[PC][ZMQ] Gaze SUB bound on tcp://*:{self.ZMQ_GAZE_PORT}")
 
-    def _close_sub(self) -> None:
+    def _close_img(self) -> None:
         self.sub_context.term()
-        self.gaze_sub.close()
+        self.gaze_req.close()
 
-    def _close_pub(self) -> None:
+    def _close_gaze(self) -> None:
         self.pub_context.term()
         self.image_pub.close()

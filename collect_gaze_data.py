@@ -47,7 +47,7 @@ def img_rec_and_pub(server: GazeServer) -> None:
         while True:
             time.sleep(1)
             # Sende das Byte‐Array in einer ZeroMQ‐Nachricht
-            server.zmq_image_publisher(step, img_encoded)
+            server.zmq_publish_image(step, img_encoded)
             step += 1
     except KeyboardInterrupt:
         print("[PC][ZMQ] Interrupted by user.")
@@ -59,7 +59,7 @@ def gaze_rec(server: GazeServer) -> None:
     """
     while True:
         try:
-            gaze_data: Tuple[float, float, int] = server.zmq_gaze_subscriber()
+            gaze_data: Tuple[float, float, int] = server.zmq_get_gaze()
             if gaze_data is not None:
                 print(f"[PC] Gaze data received: {gaze_data}")
             else:
