@@ -93,7 +93,9 @@ class GazeServer(object):
                 self.hololens_address = addr[0]
                 print(f"[PC][UDP] Received discovery ping from HoloLens @ {addr}.")
                 # Reply back so HoloLens knows our IP
-                sock.sendto(self.DISCOVERY_REPLY, addr)
+                for _ in range(10):
+                    sock.sendto(self.DISCOVERY_REPLY, addr)
+                    time.sleep(0.05)
                 break  # we only need one discovery
 
     def zmq_publish_image(self, timestamp: int, image: cv2.typing.MatLike) -> None:

@@ -33,7 +33,7 @@ class GazeTrackerDevice(DiscreteDevice):
 
     def _setup_connect(self):
         self.gaze_server.setup_connection()
-        self.camera.connect()
+        assert self.camera.connect(), "Failed to connect to camera (maybe plug out and in again?)"
 
 
     
