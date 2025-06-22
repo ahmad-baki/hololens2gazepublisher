@@ -32,8 +32,9 @@ class GazeTrackerDevice(DiscreteDevice):
         self.timestamp = 0
 
     def _setup_connect(self):
-        self.gaze_server.setup_connection()
         assert self.camera.connect(), "Failed to connect to camera (maybe plug out and in again?)"
+        self.gaze_server.setup_connection()
+        print("[GazeTrackerDevice] Camera connected successfully.")
 
 
     
@@ -49,12 +50,12 @@ class GazeTrackerDevice(DiscreteDevice):
     def store_last_frame(self, directory: Path, filename: str):
         data = self.get_sensors()
         rgb = data["camera_image"]["rgb"]
-        self.writer.send((rgb, str(directory / f"{data["camera_image"]["time"]}") + self.formats[0]))
+        self.writer.send((rgb, f"{directory} / {data['camera_image']['time']}{self.formats[0]}"))
 
         gaze = data["gaze_data"]["gaze"]
-        self.writer.send((gaze, str(directory / f"{data["gaze_data"]["time"]}") + self.formats[1]))
-        
-    
+        self.writer.send((gaze, f"{directory} / {data['gaze_data']['time']}{self.formats[1]}"))
+
+
     def get_sensors(self) -> dict:
         """
         Returns the latest sensor data as a dictionary.
@@ -68,6 +69,7 @@ class GazeTrackerDevice(DiscreteDevice):
         camera_data = self.camera.get_sensors()
         if camera_data["rgb"] is None:
             raise RuntimeError("Camera image data is not available. Ensure the camera is connected and capturing images.")
+        print("camera_data['time']:", camera_data['time']   )
         self.gaze_server.zmq_publish_image(camera_data['time'], camera_data['rgb'])
         gaze = self.gaze_server.zmq_get_gaze()
         gaze_data = {

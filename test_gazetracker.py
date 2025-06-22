@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, "/home/abaki/Desktop/hololens2gazepublisher/real_robot")
 
-from GazeTrackerDevice import GazeTrackerDevice
+from gaze_tracker_device import GazeTrackerDevice
 from real_robot.real_robot_env.robot.hardware_depthai import DepthAI, DAICameraType
 import time
 

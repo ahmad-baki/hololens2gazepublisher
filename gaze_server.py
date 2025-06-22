@@ -1,6 +1,6 @@
 import re
 import socket
-import threading
+import struct
 import time
 import cv2
 import zmq
@@ -49,7 +49,7 @@ class GazeServer(object):
     BUFFER_SIZE: int        = 1024
     ZMQ_IMG_PORT: int = 5006
     ZMQ_GAZE_PORT: int  = 5007
-    PC_WIFI_IP: str = get_wlan_ip()
+    PC_WIFI_IP: str = None
     # Set False if working on linux, idk why
     bind_to_wifi: bool = False  # Set to False if you want to bind to all interfaces, 
 
@@ -75,7 +75,15 @@ class GazeServer(object):
 
         sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        bind_address: Tuple[str, int] = (self.PC_WIFI_IP, self.DISCOVERY_PORT) if self.bind_to_wifi else ('', self.DISCOVERY_PORT)
+        bind_address: Tuple[str, int] = ()
+        if self.bind_to_wifi:
+            self.PC_WIFI_IP = get_wlan_ip()
+            print(f"[PC][UDP] Binding to WLAN IP: {self.PC_WIFI_IP}")
+            bind_address = (self.PC_WIFI_IP, self.DISCOVERY_PORT)
+        else:
+            bind_address = ('', self.DISCOVERY_PORT)
+
+        print(f"[PC][UDP] Binding to {bind_address} for discovery...")
         sock.bind(bind_address)
         print(f"[PC][UDP] Listening for discovery on {bind_address}...")
         # hacky
@@ -98,7 +106,7 @@ class GazeServer(object):
                     time.sleep(0.05)
                 break  # we only need one discovery
 
-    def zmq_publish_image(self, timestamp: int, image: cv2.typing.MatLike) -> None:
+    def zmq_publish_image(self, timestamp: float, image: cv2.typing.MatLike) -> None:
         """
         Captures frames from the default camera (index=0), encodes as JPEG,
         and publishes them over ZMQ PUB socket at tcp://*:5556.
@@ -107,8 +115,10 @@ class GazeServer(object):
             
             image_bytes: bytes = image.tobytes()
             # Publish as a single ZMQ message
-            step_bytes: bytes = timestamp.to_bytes(4, byteorder="big")
-            self.image_pub.send_multipart([step_bytes, image_bytes])
+            packed: bytes = struct.pack('>d', timestamp)
+            # wrap in a bytearray
+            ba = bytearray(packed)
+            self.image_pub.send_multipart([ba, image_bytes])
             print(f"[PC][ZMQ] Published image with step={timestamp} | size={len(image_bytes)} bytes")
 
         except Exception as e:
@@ -121,6 +131,7 @@ class GazeServer(object):
         Each message could look like: { "x": 123, "y": 456, "time": 1234 }
         """
         self.gaze_req.send_string("")
+        print("[PC][ZMQ] Requesting gaze data...")
         msg: str = self.gaze_req.recv_string()
         fixed = re.sub(r'(\d),(\d)', r'\1.\2', msg)
         gaze: Dict[str, Any] = json.loads(fixed)
