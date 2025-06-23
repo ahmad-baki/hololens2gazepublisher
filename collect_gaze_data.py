@@ -39,8 +39,8 @@ def img_rec_and_pub(server: GazeServer) -> None:
         print("[PC] Error: Image could not be encoded as JPEG.")
         sys.exit(1)
 
-    img_bytes = img_encoded.tobytes()
-    print(f"[PC] Image loaded ({len(img_bytes)} Bytes). Starting send loop.")
+    # img_bytes = img_encoded.tobytes()
+    # print(f"[PC] Image loaded ({len(img_bytes)} Bytes). Starting send loop.")
 
     # 3. Optional: in einer Schleife senden, sonst nur einmal
     try:

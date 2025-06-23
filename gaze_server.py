@@ -49,7 +49,7 @@ class GazeServer(object):
     BUFFER_SIZE: int        = 1024
     ZMQ_IMG_PORT: int = 5006
     ZMQ_GAZE_PORT: int  = 5007
-    PC_WIFI_IP: str = None
+    PC_WIFI_IP: str = ""
     # Set False if working on linux, idk why
     bind_to_wifi: bool = False  # Set to False if you want to bind to all interfaces, 
 
@@ -75,7 +75,7 @@ class GazeServer(object):
 
         sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        bind_address: Tuple[str, int] = ()
+        bind_address: Tuple[str, int]
         if self.bind_to_wifi:
             self.PC_WIFI_IP = get_wlan_ip()
             print(f"[PC][UDP] Binding to WLAN IP: {self.PC_WIFI_IP}")
@@ -112,9 +112,14 @@ class GazeServer(object):
         and publishes them over ZMQ PUB socket at tcp://*:5556.
         """
         try:
-            
-            image_bytes: bytes = image.tobytes()
-            # Publish as a single ZMQ message
+            # Convert the image to JPEG format and encode it
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]  # Quality: 0–100
+            success, img_encoded = cv2.imencode('.jpg', image, encode_param)
+            if not success:
+                print("[PC][ERROR] Image could not be encoded as JPEG.")
+                return
+            # Convert the encoded image to bytes
+            image_bytes: bytes = img_encoded.tobytes()
             packed: bytes = struct.pack('>d', timestamp)
             # wrap in a bytearray
             ba = bytearray(packed)
