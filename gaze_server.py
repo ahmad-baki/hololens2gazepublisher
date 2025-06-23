@@ -163,7 +163,7 @@ class GazeServer(object):
         # init sub for gaze data
         self.sub_context = zmq.Context()
         self.gaze_req = self.sub_context.socket(zmq.REQ)
-        self.gaze_req.bind(f"tcp://*:{self.ZMQ_GAZE_PORT}")
+        self.gaze_req.connect(f"tcp://{self.hololens_address}:{self.ZMQ_GAZE_PORT}")
         print(f"[PC][ZMQ] Gaze SUB bound on tcp://*:{self.ZMQ_GAZE_PORT}")
 
     def _close_img(self) -> None:
