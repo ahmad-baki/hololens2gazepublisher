@@ -136,7 +136,6 @@ class GazeServer(object):
         Each message could look like: { "x": 123, "y": 456, "time": 1234 }
         """
         self.gaze_req.send_string("")
-        print("[PC][ZMQ] Requesting gaze data...")
         msg: str = self.gaze_req.recv_string()
         fixed = re.sub(r'(\d),(\d)', r'\1.\2', msg)
         gaze: Dict[str, Any] = json.loads(fixed)

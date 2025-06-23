@@ -3,7 +3,8 @@ from gaze_server import GazeServer
 from real_robot.real_robot_env.robot.hardware_cameras import DiscreteCamera
 from real_robot.real_robot_env.robot.hardware_devices import DiscreteDevice
 from pathlib import Path
-from multiprocessing import Pipe
+from multiprocessing import Process, Event, Pipe
+import pickle 
 
 class GazeTrackerDevice(DiscreteDevice):
 
@@ -21,10 +22,9 @@ class GazeTrackerDevice(DiscreteDevice):
             start_frame_latency
         )
         self.reader, self.writer = Pipe(False)
-        self.formats = ['.png', '.json'] # e.g. ['.png']
-        # if your device stores several files per frame, make sure the
-        # suffix of each output file is distinct and considered in the
-        # formats array: e.g. self.formats = ['_img.png', '_depth.png']
+        self.stop_frame_storage_event = Event()
+        self.write_process = Process(target=self.__store_frames, args=[self.reader, self.stop_frame_storage_event])
+        self.formats = ['.png', '.json']
         
         ### INITIALIZE OBJECT HERE
         self.gaze_server = gaze_server
@@ -34,6 +34,7 @@ class GazeTrackerDevice(DiscreteDevice):
     def _setup_connect(self):
         assert self.camera.connect(), "Failed to connect to camera (maybe plug out and in again?)"
         self.gaze_server.setup_connection()
+        self.write_process.start()
         print("[GazeTrackerDevice] Camera connected successfully.")
 
 
@@ -42,19 +43,46 @@ class GazeTrackerDevice(DiscreteDevice):
         """
         Closes the connection to the device.
         """
+        self.stop_frame_storage_event.set()
         self.gaze_server.close()
+        self.write_process.join()
+        self.write_process.close()
         self.reader.close()
         self.writer.close()
         return self.camera.close()
     
     def store_last_frame(self, directory: Path, filename: str):
         data = self.get_sensors()
+        print("Received data")
         rgb = data["camera_image"]["rgb"]
-        self.writer.send((rgb, f"{directory} / {data['camera_image']['time']}{self.formats[0]}"))
-
         gaze = data["gaze_data"]["gaze"]
-        self.writer.send((gaze, f"{directory} / {data['gaze_data']['time']}{self.formats[1]}"))
+        self.writer.send((rgb, 
+                          f"{directory}/{data['camera_image']['time']}{self.formats[0]}", 
+                          gaze, 
+                          f"{directory}/{data['gaze_data']['time']}{self.formats[1]}"))
 
+        print(f"[GazeTrackerDevice] Stored frame at {directory}.")
+
+    @staticmethod
+    def __store_frames(reader, stop_frame_storage_event):
+        print("Starting frame storage process.")
+        try:
+            print("Starting frame storage process.")
+            while not stop_frame_storage_event.is_set():
+
+                if not reader.poll(0.1):
+                    continue
+                (img, img_path, gaze, gaze_path) = reader.recv()
+                cv2.imwrite(
+                    img_path,
+                    img,
+                )
+                with open(gaze_path, 'wb') as handle:
+                    pickle.dump(gaze, handle)
+
+            print("Stopping frame storage process.")
+        finally:
+            reader.close()
 
     def get_sensors(self) -> dict:
         """
