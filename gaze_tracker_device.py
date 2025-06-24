@@ -1,3 +1,4 @@
+import json
 import cv2
 from gaze_server import GazeServer
 from real_robot.real_robot_env.robot.hardware_cameras import DiscreteCamera
@@ -53,7 +54,6 @@ class GazeTrackerDevice(DiscreteDevice):
     
     def store_last_frame(self, directory: Path, filename: str):
         data = self.get_sensors()
-        print("Received data")
         rgb = data["camera_image"]["rgb"]
         gaze = data["gaze_data"]["gaze"]
         self.writer.send((rgb, 
@@ -61,13 +61,9 @@ class GazeTrackerDevice(DiscreteDevice):
                           gaze, 
                           f"{directory}/{data['gaze_data']['time']}{self.formats[1]}"))
 
-        print(f"[GazeTrackerDevice] Stored frame at {directory}.")
-
     @staticmethod
     def __store_frames(reader, stop_frame_storage_event):
-        print("Starting frame storage process.")
         try:
-            print("Starting frame storage process.")
             while not stop_frame_storage_event.is_set():
 
                 if not reader.poll(0.1):
@@ -77,10 +73,10 @@ class GazeTrackerDevice(DiscreteDevice):
                     img_path,
                     img,
                 )
-                with open(gaze_path, 'wb') as handle:
-                    pickle.dump(gaze, handle)
+                with open(gaze_path, 'w') as handle:
+                    # print(f"[GazeTrackerDevice] Storing gaze data: {gaze}")
+                    json.dump(gaze, handle)
 
-            print("Stopping frame storage process.")
         finally:
             reader.close()
 
@@ -89,15 +85,17 @@ class GazeTrackerDevice(DiscreteDevice):
         Returns the latest sensor data as a dictionary.
         The dictionary is in the format:
         {
-            'gaze_data': {'gaze': {'x': <int32>, 'y': <int32>}, 'time': <int32>},
-            'camera_image': {'rgb': <array>, 'time': <int32>}
+            'gaze_data': {'gaze': {'x': <int32>, 'y': <int32>}, 'time': <str>},
+            'camera_image': {'rgb': <array>, 'time': <str>}
         }
         """
         # Example structure, adapt to your device's data
         camera_data = self.camera.get_sensors()
+
         if camera_data["rgb"] is None:
             raise RuntimeError("Camera image data is not available. Ensure the camera is connected and capturing images.")
-        print("camera_data['time']:", camera_data['time']   )
+        camera_data['time'] = str(camera_data['time'])
+
         self.gaze_server.zmq_publish_image(camera_data['time'], camera_data['rgb'])
         gaze = self.gaze_server.zmq_get_gaze()
         gaze_data = {

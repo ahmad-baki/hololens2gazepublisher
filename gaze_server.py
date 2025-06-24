@@ -106,12 +106,15 @@ class GazeServer(object):
                     time.sleep(0.05)
                 break  # we only need one discovery
 
-    def zmq_publish_image(self, timestamp: float, image: cv2.typing.MatLike) -> None:
+    def zmq_publish_image(self, timestamp: str, image: cv2.typing.MatLike) -> None:
         """
         Captures frames from the default camera (index=0), encodes as JPEG,
         and publishes them over ZMQ PUB socket at tcp://*:5556.
         """
         try:
+            # Convert the timestamp to bytes
+            timestamp_bytes: bytes = timestamp.encode('utf-8')
+
             # Convert the image to JPEG format and encode it
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]  # Quality: 0–100
             success, img_encoded = cv2.imencode('.jpg', image, encode_param)
@@ -120,10 +123,8 @@ class GazeServer(object):
                 return
             # Convert the encoded image to bytes
             image_bytes: bytes = img_encoded.tobytes()
-            packed: bytes = struct.pack('>d', timestamp)
-            # wrap in a bytearray
-            ba = bytearray(packed)
-            self.image_pub.send_multipart([ba, image_bytes])
+
+            self.image_pub.send_multipart([timestamp_bytes, image_bytes])
             print(f"[PC][ZMQ] Published image with step={timestamp} | size={len(image_bytes)} bytes")
 
         except Exception as e:
@@ -133,12 +134,12 @@ class GazeServer(object):
     def zmq_get_gaze(self) -> Dict[str, Any]:
         """
         Subscribes to gaze‐coordinate messages (as JSON strings) on tcp://*:5557.
-        Each message could look like: { "x": 123, "y": 456, "time": 1234 }
+        Each message could look like: { "x": 123, "y": 456, "time": 123325.4545 }
         """
         self.gaze_req.send_string("")
         msg: str = self.gaze_req.recv_string()
-        fixed = re.sub(r'(\d),(\d)', r'\1.\2', msg)
-        gaze: Dict[str, Any] = json.loads(fixed)
+        gaze = json.loads(msg)
+        print(f"[PC][ZMQ] Received gaze data: {gaze}")
         return gaze
 
     def close(self) -> None:
@@ -162,7 +163,7 @@ class GazeServer(object):
         # init sub for gaze data
         self.sub_context = zmq.Context()
         self.gaze_req = self.sub_context.socket(zmq.REQ)
-        self.gaze_req.connect(f"tcp://{self.hololens_address}:{self.ZMQ_GAZE_PORT}")
+        self.gaze_req.bind(f"tcp://*:{self.ZMQ_GAZE_PORT}")
         print(f"[PC][ZMQ] Gaze SUB bound on tcp://*:{self.ZMQ_GAZE_PORT}")
 
     def _close_img(self) -> None:

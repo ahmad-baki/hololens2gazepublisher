@@ -19,10 +19,6 @@ cam = DepthAI(
 gaze_device = GazeTrackerDevice("", camera=cam)
 
 gaze_device.connect()
-
-counter = 0
-
 while (True):
-    gaze_device.store_last_frame("/home/abaki/Desktop/hololens2gazepublisher/data/test", f"{counter}")
-    print(f"storing frame: {counter}")
+    gaze_device.store_last_frame("/home/abaki/Desktop/hololens2gazepublisher/data/test", "")
     time.sleep(0.1)
