@@ -1,8 +1,9 @@
 import sys
 
 sys.path.insert(0, "/home/abaki/Desktop/hololens2gazepublisher/real_robot")
+from real_robot.real_robot_env.robot.hardware_gazetracker import GazeTracker
 
-from gaze_tracker_device import GazeTrackerDevice
+
 from real_robot.real_robot_env.robot.hardware_depthai import DepthAI, DAICameraType
 import time
 
@@ -16,7 +17,7 @@ cam = DepthAI(
     camera_type= DAICameraType.OAK_D_LITE
 )
 
-gaze_device = GazeTrackerDevice("", camera=cam)
+gaze_device = GazeTracker("")
 
 gaze_device.connect()
 while (True):
