@@ -177,7 +177,7 @@ class GazeServer(object):
 import json
 import cv2
 from gaze_server import GazeServer
-# from real_robot.real_robot_env.robot.hardware_cameras import DiscreteCamera
+from real_robot.real_robot_env.robot.hardware_cameras import DiscreteCamera
 from real_robot.real_robot_env.robot.hardware_depthai import DepthAI, DAICameraType
 from real_robot.real_robot_env.robot.hardware_devices import DiscreteDevice
 from pathlib import Path
