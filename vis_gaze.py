@@ -2,7 +2,7 @@ import json
 import cv2
 import os
 
-fold_dir:str = '/media/abaki/EXTERNAL_US/bachelor_thesis/data/3d/pear_banana_in_sink/2025_07_03-15_08_11/sensors/continuous_device_'
+fold_dir:str = 'F:/bachelor_thesis/data/3d/pear_banana_in_sink/2025_07_03-13_15_54/sensors/continuous_device_'
 files = sorted(os.listdir(fold_dir))
 
 # get union of image and gaze files that have the same name, ignore the extension
@@ -16,9 +16,8 @@ for f in files:
 # sort paired files by their float value in the name
 paired_files = sorted(paired_files, key=lambda x: int(x))
 
-
-image_files = sorted([os.path.join(fold_dir, f"{f}.png") for f in paired_files])
-gaze_files = sorted([os.path.join(fold_dir, f"{f}.json") for f in paired_files])
+image_files = [os.path.join(fold_dir, f"{f}.png") for f in paired_files]
+gaze_files = [os.path.join(fold_dir, f"{f}.json") for f in paired_files]
 
 print(f'[INFO] found {len(image_files)} image files and {len(gaze_files)} gaze files'
       f' in {fold_dir}')
@@ -31,64 +30,36 @@ cv2.resizeWindow('window', 1280, 720)
 while (curr_idx < len(paired_files) and break_flag is not True):
     image_file_path = image_files[curr_idx]
     image = cv2.imread(image_file_path)
+    # rotate image 180 degrees
+    image = cv2.rotate(image, cv2.ROTATE_180)
 
     gaze_file_path = gaze_files[curr_idx]
     gaze_pos_rel = json.load(open(gaze_file_path, 'r'))
     gaze_pos_abs = (gaze_pos_rel['x'] * image.shape[1],
-                    gaze_pos_rel['y'] * image.shape[0])
+                    (1 - gaze_pos_rel['y']) * image.shape[0])
 
-    print(f"[INFO] gaze position relative: {gaze_pos_rel}, absolute: {gaze_pos_abs}")
     # draw gaze point
     cv2.circle(image, (int(gaze_pos_abs[0]), int(gaze_pos_abs[1])), 5, (0, 255, 0), -1)
     cv2.imshow('window', image)
     while True:
         key = cv2.waitKey(0)
-        # # enter: save
-        # if key == 13:
-        #     print(f'[INFO] add {idx}, progress {_i + 1} / {len(image_files)}')
-        #     break
-        # # space: do not save
-        # elif key == 32:
-        #     print(f'[INFO] skip {idx}, progress {_i + 1} / {len(image_files)}')
-        #     break
 
-        # right arrow: next
-        if key == 83:
-            print(f'[INFO] next {curr_idx + 1} / {len(image_files)}')
+        # d: next
+        if key == 100:
             if curr_idx < len(image_files) - 1:
                 curr_idx += 1
+                print(f'[INFO] next {curr_idx} / {len(image_files)}')
             else:
                 print(f'[WARN] already at the last image')
             break
-        # left arrow: previous 
-        elif key == 81:
+        # a: previous 
+        elif key == 97:
             if curr_idx > 0:
                 curr_idx -= 1
-                print(f'[INFO] previous {curr_idx + 1} / {len(image_files)}')
+                print(f'[INFO] previous {curr_idx} / {len(image_files)}')
                 break
             else:
                 print(f'[WARN] already at the first image')
-
-
-
-        # # backspace: remove last added result
-        # elif key == 8:
-        #     if len(goods) != 0:
-        #         last = goods.pop()
-        #         print(f'[INFO] del {last}')
-        #     else:
-        #         print(f'[WARN] no element to delete')
-        # # +/=: add last
-        # elif key == 61:
-        #     if _i == 0:
-        #         print(f'[WARN] no last element')
-        #     else:
-        #         last = image_files[_i - 1].split('/')[-2]
-        #         if len(goods) == 0 or goods[-1] != last:
-        #             goods.append(last)
-        #             print(f'[INFO] add skipped {last}')
-        #         else:
-        #             print(f'[WARN] duplicated last')
 
         # esc or q: stop
         elif key == 27:

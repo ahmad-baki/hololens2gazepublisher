@@ -1,53 +1,29 @@
 import sys
 import threading
 import time
-from typing import Tuple
+from typing import Dict, Any
 
 import cv2
-import zmq
-# from GazeTrackerDevice import GazeTracker
-# import GazeTrackerDevice
 from gaze_server import GazeServer
 
-
 PUBLISH_HZ: float = 1.0
-# half to prevent overloading the Buffer
 REC_HZ: float = 15.0
-
 
 
 def img_rec_and_pub(server: GazeServer) -> None:
     """
     Thread function to handle image capture and publishing.
     """
-    step:int = 0  # message index for ZMQ
-    # context = zmq.Context()
-    # socket = context.socket(zmq.PUSH)
-    # bind_address = f"tcp://*:{server.ZMQ_IMAGE_PUB_PORT}"
-    # socket.bind(bind_address)
-    # print(f"[PC][ZMQ] PUSH bind at {bind_address}")
-
+    step: int = 0
     img = cv2.imread("/home/abaki/Desktop/hololens2gazepublisher/sehtest.jpg")
     if img is None:
-        print(f"[PC] Error: Image '{'./sehtest.jpg'}' could not be loaded.")
+        print(f"[PC] Error: Image './sehtest.jpg' could not be loaded.")
         sys.exit(1)
 
-    # OpenCV liefert BGR; wir kodieren direkt als JPEG, das funktioniert
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]  # Qualität: 0–100
-    success, img_encoded = cv2.imencode('.jpg', img, encode_param)
-    if not success:
-        print("[PC] Error: Image could not be encoded as JPEG.")
-        sys.exit(1)
-
-    # img_bytes = img_encoded.tobytes()
-    # print(f"[PC] Image loaded ({len(img_bytes)} Bytes). Starting send loop.")
-
-    # 3. Optional: in einer Schleife senden, sonst nur einmal
     try:
         while True:
-            time.sleep(1)
-            # Sende das Byte‐Array in einer ZeroMQ‐Nachricht
-            server.zmq_publish_image(step, img_encoded)
+            time.sleep(1.0 / PUBLISH_HZ)
+            server.zmq_publish_image(str(step), img)
             step += 1
     except KeyboardInterrupt:
         print("[PC][ZMQ] Interrupted by user.")
@@ -55,16 +31,13 @@ def img_rec_and_pub(server: GazeServer) -> None:
 
 def gaze_rec(server: GazeServer) -> None:
     """
-    Thread function to handle gaze data subscription.
+    Thread function to handle gaze data requests via REQ/REP.
     """
     while True:
         try:
-            gaze_data: Tuple[float, float, int] = server.zmq_get_gaze()
-            if gaze_data is not None:
-                print(f"[PC] Gaze data received: {gaze_data}")
-            else:
-                print("[PC] No gaze data received.")
-            time.sleep(1.0 / REC_HZ)  # wait for the next subscription cycle
+            gaze_data: Dict[str, Any] = server.zmq_get_gaze()
+            print(f"[PC] Gaze data received: {gaze_data}")
+            time.sleep(1.0 / REC_HZ)
         except Exception as e:
             print(f"[PC][ERROR] Exception in gaze subscriber: {e}")
             time.sleep(1.0)
@@ -72,41 +45,29 @@ def gaze_rec(server: GazeServer) -> None:
 
 if __name__ == "__main__":
     server = GazeServer()
+    # perform discovery + ZMQ socket setup
     server.setup_connection()
 
-    # 1) Run discovery listener in main thread (blocks until HL2 pings)
-
-    server._udp_discovery_listener()
     print(f"[PC] Discovery complete. HoloLens is at {server.hololens_address}.")
     print("[PC][ZMQ] Starting threads...")
 
-    # 2) Launch the PUB/SUB threads for image/gaze
-    img_rec_and_pub_thread: threading.Thread = threading.Thread(target=img_rec_and_pub, args=(server,), daemon=True)
-    gaze_rec_thread: threading.Thread = threading.Thread(target=gaze_rec, args=(server,), daemon=True)
+    img_thread = threading.Thread(target=img_rec_and_pub, args=(server,), daemon=True)
+    gaze_thread = threading.Thread(target=gaze_rec, args=(server,), daemon=True)
 
-    img_rec_and_pub_thread.start()
-    gaze_rec_thread.start()
+    img_thread.start()
+    gaze_thread.start()
     print("[PC][ZMQ] Threads started.")
 
-
-    # Keep main alive
     try:
-        while True :
-            in_str = input("e to exit, r to restart: ")
-            # match in_str:
-            #     case "e":
-            #         print("[PC] Exiting...")
-            #         break
-            #     case "r":
-            #         print("[PC] Restarting image and gaze threads...")
-            if in_str == "e":
+        while True:
+            cmd = input("e to exit, r to restart: ").strip().lower()
+            if cmd == "e":
                 print("[PC] Exiting...")
                 break
-            elif in_str == "r":
-                print("[PC] Restarting image and gaze threads...")
-                
-                   
-    except Exception as e:
-        print("[PC] Shutting down.")
+            elif cmd == "r":
+                print("[PC] Restarting threads not yet implemented.")
+    except KeyboardInterrupt:
+        print("\n[PC] Shutting down.")
+
     server.close()
     print("[PC] Closed ZMQ sockets.")
