@@ -52,8 +52,8 @@ def main():
     # color_path = args.color
     # point_path = args.points
 
-    color_path = "/home/abaki/Desktop/hololens2gazepublisher/data/test/2025_07_03-09_59_15/sensors/side_cam/0.png"
-    point_path = "/home/abaki/Desktop/hololens2gazepublisher/data/test/2025_07_03-09_59_15/sensors/side_cam/0.txt"
+    color_path = "/media/abaki/EXTERNAL_US/bachelor_thesis/data/3d/pear_banana_in_sink/2025_07_03-13_09_20/sensors/continuous_device_/0.png"
+    point_path = "/media/abaki/EXTERNAL_US/bachelor_thesis/data/3d/pear_banana_in_sink/2025_07_03-13_09_20/sensors/continuous_device_/0.txt"
 
     color_rgb = load_color_image(color_path)
     points = load_point_cloud(point_path)

@@ -196,3 +196,5 @@ cython_debug/
 # Data
 data/
 outputs/
+
+gif/
